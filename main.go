@@ -45,7 +45,7 @@ func (b *BucketFull) IsFull() bool {
 }
 
 func (b *BucketFull) Add(ip net.IP) error {
-	return nil
+	return nil // Bucket is full, nothing to add
 }
 
 
@@ -56,7 +56,7 @@ func (b *BucketFull) Count() uint {
 // Interface implementation for BucketFeed
 
 func (b *BucketFeed) IsFull() bool {
-	return (b.fullBucketsCounter == 256)
+	return b.fullBucketsCounter == 256
 }
 
 /**
@@ -71,21 +71,18 @@ func (b *BucketFeed) addRecursive(ip net.IP, depth int) int {
 			ret = -1
 		}
 		b.counter++
-		b.fullBucketsCounter = 256
 	} else {
-		if(!b.IsFull()) {
-			octet := ip[0]
-			remain := ip[1:]
-			if b.buckets[octet] == nil {
-				b.buckets[octet] = newBucketFeed()
-			}
-			ret = b.buckets[octet].(*BucketFeed).addRecursive(remain, depth - 1)
-			b.counter += ret
-			if b.IsFull() {
-				counter := b.buckets[octet].Count()
-				b.buckets[octet] = newBucketFull(counter)
-				b.fullBucketsCounter++
-			}
+		octet := ip[0]
+		remain := ip[1:]
+		if b.buckets[octet] == nil {
+			b.buckets[octet] = newBucketFeed()
+		}
+		ret = b.buckets[octet].(*BucketFeed).addRecursive(remain, depth - 1)
+		b.counter += ret
+		if b.buckets[octet].IsFull() {
+			counter := b.buckets[octet].Count()
+			b.buckets[octet] = newBucketFull(counter)
+			b.fullBucketsCounter++
 		}
 	}
 	return ret
