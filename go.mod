@@ -1,3 +1,3 @@
-module github.com/wulframus/lightspeed-ipaddrs
+module lightspeed-addrs
 
 go 1.22.1
