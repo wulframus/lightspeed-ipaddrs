@@ -8,19 +8,61 @@ import (
 	"strings"
 )
 
-type Bucket struct {
-	counter int
-	buckets [256]*Bucket
+type Bucket interface {
+	Add(ip net.IP) error
+	IsFull() bool
+	Count() uint
 }
 
-func NewBucket() *Bucket {
-	return &Bucket{}
+type BucketFull struct {
+	counter int
+}
+
+type BucketFeed struct {
+	counter int
+	depth int
+	fullBucketsCounter int
+	buckets [256]Bucket
+}
+
+func newBucketFull(counter uint) *BucketFull {
+	return &BucketFull{counter: int(counter)}
+}
+
+func newBucketFeed() *BucketFeed{
+	return &BucketFeed{}
+}
+
+func NewBucket() *BucketFeed {
+	return newBucketFeed()
+}
+
+
+// Interface implementation for BucketFull
+
+func (b *BucketFull) IsFull() bool {
+	return true
+}
+
+func (b *BucketFull) Add(ip net.IP) error {
+	return nil
+}
+
+
+func (b *BucketFull) Count() uint {
+	return uint(b.counter)
+}
+
+// Interface implementation for BucketFeed
+
+func (b *BucketFeed) IsFull() bool {
+	return (b.fullBucketsCounter == 256)
 }
 
 /**
  * returns 1 if address added, -1 if occurs once, 0 if occurs more times
  */
-func (b *Bucket) addRecursive(ip net.IP, depth int) int {
+func (b *BucketFeed) addRecursive(ip net.IP, depth int) int {
 	ret := 0
 	if depth == 0 {
 		if b.counter == 0 {
@@ -29,19 +71,27 @@ func (b *Bucket) addRecursive(ip net.IP, depth int) int {
 			ret = -1
 		}
 		b.counter++
+		b.fullBucketsCounter = 256
 	} else {
-		octet := ip[0]
-		remain := ip[1:]
-		if b.buckets[octet] == nil {
-			b.buckets[octet] = NewBucket()
+		if(!b.IsFull()) {
+			octet := ip[0]
+			remain := ip[1:]
+			if b.buckets[octet] == nil {
+				b.buckets[octet] = newBucketFeed()
+			}
+			ret = b.buckets[octet].(*BucketFeed).addRecursive(remain, depth - 1)
+			b.counter += ret
+			if b.IsFull() {
+				counter := b.buckets[octet].Count()
+				b.buckets[octet] = newBucketFull(counter)
+				b.fullBucketsCounter++
+			}
 		}
-		ret = b.buckets[octet].addRecursive(remain, depth-1)
-		b.counter += ret
 	}
 	return ret
 }
 
-func (b *Bucket) Add(ip net.IP) error {
+func (b *BucketFeed) Add(ip net.IP) error {
 	if ip == nil {
 		return fmt.Errorf("IP address is nil")
 	}
@@ -53,7 +103,7 @@ func (b *Bucket) Add(ip net.IP) error {
 	return nil
 }
 
-func (b *Bucket) Count() uint {
+func (b *BucketFeed) Count() uint {
 	return uint(b.counter)
 }
 
