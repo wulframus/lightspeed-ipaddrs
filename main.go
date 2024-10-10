@@ -8,125 +8,78 @@ import (
 	"strings"
 )
 
-type Bucket interface {
-	Add(ip net.IP) error
-	IsFull() bool
-	Count() int
-	FullBuckets() int
-	addRecursive(ip net.IP, depth int) int
+type Tree struct {
+	leftCount int
+	leftIsFull bool
+	leftSubTree *Tree
+	rightCount int
+	rightIsFull bool
+	rightSubTree *Tree
 }
 
-type BucketFull struct {
-	counter int
-	matches int
+func NewTree() *Tree {
+	return &Tree{}
 }
 
-type BucketFeed struct {
-	counter int
-	fullBucketsCounter int
-	buckets [256]Bucket
+func (self *Tree) IsFull() bool {
+	return self.leftIsFull && self.rightIsFull
 }
 
-func newBucketFull(counter int) *BucketFull {
-	return &BucketFull{counter: counter}
+func (self *Tree) Count() uint {
+	return uint(self.leftCount + self.rightCount)
 }
 
-func newBucketFeed() *BucketFeed{
-	return &BucketFeed{}
-}
-
-func NewBucket() *BucketFeed {
-	return newBucketFeed()
-}
-
-
-// Interface implementation for BucketFull
-
-func (b *BucketFull) IsFull() bool {
-	return true
-}
-
-func (b *BucketFull) FullBuckets() int {
-	return 256
-}
-
-func (b *BucketFull) addRecursive(ip net.IP, depth int) int {
-	ret := 0
-	if b.matches == 0 {
-		ret = 1
-	} else if b.matches == 1 {
-		ret = -1
+func (self *Tree) addRecursive(ip uint32, depth int) int {
+	if self.IsFull() {
+		return 0
 	}
-	b.matches++
-	return ret
-}
-
-func (b *BucketFull) Add(ip net.IP) error {
-	return nil // Bucket is full, nothing to add
-}
-
-
-func (b *BucketFull) Count() int {
-	return b.counter
-}
-
-// Interface implementation for BucketFeed
-
-func (b *BucketFeed) IsFull() bool {
-	return false
-}
-
-func (b *BucketFeed) FullBuckets() int {
-	return b.fullBucketsCounter
-} 
-/**
- * returns 1 if address added, -1 if occurs once, 0 if occurs more times
- */
-func (b *BucketFeed) addRecursive(ip net.IP, depth int) int {
 	ret := 0
 	if depth == 0 {
-		if b.counter == 0 {
-			ret = 1
-		} else if b.counter == 1 {
+		if self.leftIsFull != self.rightIsFull {
+			self.leftIsFull = true
 			ret = -1
+		} else {
+			self.rightIsFull = true
+			ret = 1
 		}
-		b.counter++
 	} else {
-		octet := ip[0]
-		remain := ip[1:]
-		if b.buckets[octet] == nil {
-			if(depth > 1) {
-				b.buckets[octet] = newBucketFeed()
-			} else {
-				b.buckets[octet] = newBucketFull(0)
-				b.fullBucketsCounter++
+		if (ip & 1) != 0 {
+			if self.rightIsFull {
+				return ret
 			}
-		}
-		ret = b.buckets[octet].addRecursive(remain, depth - 1)
-		b.counter += ret
-		if !b.buckets[octet].IsFull() && b.buckets[octet].FullBuckets() == 256 {
-			counter := b.buckets[octet].Count()
-			b.buckets[octet] = newBucketFull(counter)
-			b.fullBucketsCounter++
+			if self.rightSubTree == nil {
+				self.rightSubTree = NewTree()
+			}
+			ret = self.rightSubTree.addRecursive(ip >> 1, depth - 1)
+			self.rightCount += ret
+			if ret == 0 {
+				self.rightIsFull = true
+				self.rightSubTree = nil
+			}
+		} else {
+			if self.leftIsFull {
+				return ret
+			}
+			if self.leftSubTree == nil {
+				self.leftSubTree = NewTree()
+			}
+			ret = self.leftSubTree.addRecursive(ip >> 1, depth - 1)
+			self.leftCount += ret
+			if ret == 0 {
+				self.leftIsFull = true
+				self.leftSubTree = nil
+			}
 		}
 	}
 	return ret
 }
 
-func (b *BucketFeed) Add(ip net.IP) error {
-	if ip == nil {
-		return fmt.Errorf("IP address is nil")
-	}
-	ip = ip.To4()
-	if ip == nil {
-		return fmt.Errorf("Incorrect IPv4 address: %s", ip)
-	}
-	b.addRecursive(ip, 4)
-	return nil
+func toUint32(ip net.IP) uint32 {
+	return uint32(ip[0]) << 24 | uint32(ip[1]) << 16 | uint32(ip[2]) << 8 | uint32(ip[3])
 }
 
-func (b *BucketFeed) Count() int {
-	return b.counter
+func (self *Tree) Add(ip net.IP) {
+	self.addRecursive(toUint32(ip), 32)
 }
 
 func main() {
@@ -143,7 +96,7 @@ func main() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	root := NewBucket()
+	root := NewTree()
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -152,14 +105,13 @@ func main() {
 		}
 		ip := net.ParseIP(line)
 		if ip == nil {
-			// fmt.Printf("Incorrect IP address: %s\n", line)
 			continue
 		}
-		err := root.Add(ip)
-		if err != nil {
-			// fmt.Printf("Couldn't add %s: %v\n", line, err)
+		ip = ip.To4()
+		if ip == nil {
 			continue
 		}
+		root.Add(ip)
 	}
 
 	if err := scanner.Err(); err != nil {
