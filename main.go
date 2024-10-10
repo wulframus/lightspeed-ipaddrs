@@ -25,6 +25,10 @@ func (self *Tree) IsFull() bool {
 	return self.leftIsFull && self.rightIsFull
 }
 
+func (self *Tree) IsEmpty() bool {
+	return !self.leftIsFull && !self.rightIsFull
+}
+
 func (self *Tree) Count() uint {
 	return uint(self.leftCount + self.rightCount)
 }
@@ -35,15 +39,15 @@ func (self *Tree) addRecursive(ip uint32, depth int) int {
 	}
 	ret := 0
 	if depth == 0 {
-		if self.leftIsFull != self.rightIsFull {
+		if self.IsEmpty() {
+			ret = 1
+			self.rightIsFull = true
+		} else {
 			self.leftIsFull = true
 			ret = -1
-		} else {
-			self.rightIsFull = true
-			ret = 1
 		}
 	} else {
-		if (ip & 1) != 0 {
+		if (ip & 1) == 0 {
 			if self.rightIsFull {
 				return ret
 			}
@@ -52,7 +56,7 @@ func (self *Tree) addRecursive(ip uint32, depth int) int {
 			}
 			ret = self.rightSubTree.addRecursive(ip >> 1, depth - 1)
 			self.rightCount += ret
-			if ret == 0 {
+			if self.rightSubTree.IsFull() {
 				self.rightIsFull = true
 				self.rightSubTree = nil
 			}
@@ -65,7 +69,7 @@ func (self *Tree) addRecursive(ip uint32, depth int) int {
 			}
 			ret = self.leftSubTree.addRecursive(ip >> 1, depth - 1)
 			self.leftCount += ret
-			if ret == 0 {
+			if self.leftSubTree.IsFull() {
 				self.leftIsFull = true
 				self.leftSubTree = nil
 			}
@@ -75,10 +79,13 @@ func (self *Tree) addRecursive(ip uint32, depth int) int {
 }
 
 func toUint32(ip net.IP) uint32 {
-	return uint32(ip[0]) << 24 | uint32(ip[1]) << 16 | uint32(ip[2]) << 8 | uint32(ip[3])
+	return (uint32(ip[0]) << 24) | (uint32(ip[1]) << 16) | (uint32(ip[2]) << 8) | uint32(ip[3])
 }
 
 func (self *Tree) Add(ip net.IP) {
+	// ip4 := toUint32(ip)
+	// ret := self.addRecursive(toUint32(ip), 32)
+	// fmt.Printf("%d %08x %v\n", ret, ip4, ip)
 	self.addRecursive(toUint32(ip), 32)
 }
 
