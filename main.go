@@ -1,4 +1,4 @@
-package counter
+package main
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"sync"
 	"context"
-	"main/ipcounter"
+	"lightspeed-addrs/ipcounter"
 )
 
 func main() {
