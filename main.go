@@ -25,6 +25,7 @@ func main() {
 	defer file.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	go func() {
 		exit := make(chan os.Signal, 1)
