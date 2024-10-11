@@ -13,7 +13,20 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %s <addrs.txt>\n", os.Args[0])
+		fmt.Printf(`Usage: %s addrs.txt
+
+Counts unique IPv4 addresses from a big text file.
+
+!!! The program naively believes you will provide a good file without empty lines and errors :-) !!!
+
+There is no any piping solution. Use shell tricks, like:
+
+$ %s <(unzip -p ip_addresses.zip)
+
+or
+
+$ %s <(curl -s -L https://example.com/ip_addreses.txt)
+`, os.Args[0], os.Args[0], os.Args[0])
 		os.Exit(0)
 	}
 
