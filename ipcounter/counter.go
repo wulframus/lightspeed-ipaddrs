@@ -2,11 +2,12 @@ package ipcounter
 
 import (
 	"net"
+
 	"github.com/bits-and-blooms/bitset"
 )
 
 const (
-	storageSize = (1 << 32) // Length of storage enough for all IPv4 addresses range 
+	storageSize = (1 << 32) // Length of storage enough for all IPv4 addresses range
 )
 
 type UniqueIpv4Counter struct {
@@ -46,4 +47,3 @@ func (c *UniqueIpv4Counter) Clear() {
 func (c *UniqueIpv4Counter) Count() uint {
 	return c.counter
 }
-

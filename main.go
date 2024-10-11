@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
+	"context"
+	"fmt"
+	"lightspeed-addrs/ipcounter"
 	"os"
 	"os/signal"
-	"syscall"
 	"sync"
-	"context"
-	"lightspeed-addrs/ipcounter"
+	"syscall"
 )
 
 func main() {
@@ -32,10 +32,10 @@ func main() {
 		<-exit
 		cancel()
 	}()
-	
+
 	scanner := bufio.NewScanner(file)
 	counter := ipcounter.NewUniqueIpv4Counter()
-	
+
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -43,11 +43,11 @@ func main() {
 		defer wg.Done()
 		for scanner.Scan() {
 			select {
-				case <-ctx.Done():
-					return
-				default:
-					line := scanner.Text()
-					counter.Add(line)
+			case <-ctx.Done():
+				return
+			default:
+				line := scanner.Text()
+				counter.Add(line)
 			}
 		}
 		if err := scanner.Err(); err != nil {
@@ -56,7 +56,6 @@ func main() {
 	}()
 
 	wg.Wait()
-
 
 	fmt.Printf("Unique IP addresses count: %d\n", counter.Count())
 }
