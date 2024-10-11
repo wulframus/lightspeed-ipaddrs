@@ -1,4 +1,4 @@
-package main
+package counter
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"sync"
 	"context"
+	"main/ipcounter"
 )
 
 func main() {
@@ -33,7 +34,7 @@ func main() {
 	}()
 	
 	scanner := bufio.NewScanner(file)
-	counter := NewUniqueIpv4Counter()
+	counter := ipcounter.NewUniqueIpv4Counter()
 	
 	var wg sync.WaitGroup
 
